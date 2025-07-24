@@ -8,6 +8,7 @@
 #include <limits>
 #include <random>
 #include <cassert>
+#include <complex>
 
 using namespace std;
 
@@ -84,11 +85,26 @@ struct vec4 {
     }
 
 };
-template<typename F>
-static double bisection(F&& f, double a, double b, double tol = 1e-12, int max_iter = 1000);
+template<typename Func>
+static double bisection(Func&& func_, double a, double b, double accurate = 1e-12, int max_iter = 1000);
 static vector<double> solve_quintic(double a, double b, double c, double d, double e, double f_coeff);
 // 示例四次方程求解函数（需确保能返回实数解）
 static vec4 solveEquation_4(coefficient5 src);
+
+/*
+ * rannow: 0.086743871
+ * rannow: 4.169851147
+ * rannow: 20.808962361
+ * rannow: 9.237061995
+ * rannow: 11.000000000
+ * rannow: 3.662050734
+ * 凸点[0] x: -34.2954 y: 824169
+ * 凸点[1] x: -3.89681 y: -246.704
+ * root: -42.4812557145212111
+ * root: -5.2246874213288308
+ * root: -0.3598134920840291
+ */
+
 
 int main() {
     class std::random_device rd;  // 获取一个随机数，作为种子
@@ -102,28 +118,40 @@ int main() {
         double _2 = static_cast<double>(distr(gen)) / 10.0;
         double randnow = pow(_1, _2) / pow(_2, _1) + pow(_1, _2);
         input3[i] = randnow;
-        printf("rannow: %.9f\n", randnow);
+//        printf("rannow: %.9f\n", randnow);
     }
+//    input3[0] = 1.0;
+//    input3[1] = 0.0;
+//    input3[2] = -10.0;
+//    input3[3] = 0.0;
+//    input3[4] = 20.0;
+//    input3[5] = 0.0;
+    printf("%.9fx⁵ %c %.9fx⁴ %c %.9fx³ %c %.9fx² %c %.9fx %c %.9f = 0\n",
+           input3[0],input3[1] > 0.0 ? '+' : '-', abs(input3[1]),
+           input3[2] > 0.0 ? '+' : '-', abs(input3[2]),
+           input3[3] > 0.0 ? '+' : '-', abs(input3[3]),
+           input3[4] > 0.0 ? '+' : '-', abs(input3[4]),
+           input3[5] > 0.0 ? '+' : '-', abs(input3[5]));
     // 1.0,0.0,10.0,0.0,20.0,-4.0
     vector<double> roots = solve_quintic(input3[0], input3[1], input3[2], input3[3], input3[4], input3[5]);
     for (double root : roots) {
-        printf("root: %.16f\n", root);
+        printf("root: x=%.16f, y=0\n", root);
     }
     return 0;
 }
 // 二分法求根函数
-template<typename F>
-double bisection(F&& f, double a, double b, double tol, int max_iter) {
-    double fa = f(a);
-    double fb = f(b);
+template<typename funcPtr>
+double bisection(funcPtr&& func_, double a, double b, double accurate, int max_iter) {
+    double fa = func_(a);
+    double fb = func_(b);
 
     if (fa * fb > 0) return NAN;
     if (fa == 0) return a;
     if (fb == 0) return b;
 
-    for (int i = 0; i < max_iter && (b - a) > tol; ++i) {
+    for (int i = 0; i < max_iter && (b - a) > 1.0E-12; ++i) {
         double c = (a + b) / 2;
-        double fc = f(c);
+        double fc = func_(c);
 
         if (fc == 0) return c;
         if (fa * fc < 0) b = c;
@@ -215,42 +243,55 @@ vector<double> solve_quintic(double a, double b, double c, double d, double e, d
     return roots;
 }
 vec4 solveEquation_4(coefficient5 src){
-    double A = src.a, B = src.b, C = src.c, D = src.d, E = src.e;
-    // ax^4 + bx^3 + cx^2 + dx + e = 0
-    double delta1 = C*C - 3.0*B*D + 12.0*A*E;
-    double delta2 = 2.0*C*C*C - 9.0*B*C*D + 27.0*A*D*D + 27.0*B*B*E - 72.0*A*C*E;
+    using namespace std::complex_literals;
+    std::complex<double> A = src.a, B = src.b, C = src.c, D = src.d, E = src.e;
 
-    double deltaL = (pow(2.0, 1/3.0)*delta1) /
-                    (3.0*A * pow( delta2 + sqrt(-4.0*delta1*delta1*delta1 + delta2*delta2) , 1/3.0));
+    // 安全除法：处理分母接近零的情况
+    auto safe_divide =
+            [](std::complex<double> num, std::complex<double> den) {
+                const double epsilon = 1e-12;
+                if (std::abs(den) < epsilon) return num / epsilon;
+                return num / den;
+            };
 
-    double deltaR = (pow( delta2 + sqrt(-4.0*delta1*delta1*delta1 + delta2*delta2) , 1/3.0)) /
-                    (3.0 * pow(2.0, 1/3.0) * A);
-    double delta = deltaL + deltaR;
+    // 计算中间变量（复数版本）
+    std::complex<double> delta1 = C*C - 3.0*B*D + 12.0*A*E;
+    std::complex<double> delta2 = 2.0*C*C*C - 9.0*B*C*D + 27.0*A*D*D + 27.0*B*B*E - 72.0*A*C*E;
+    std::complex<double> sqrt_term = std::sqrt(-4.0*delta1*delta1*delta1 + delta2*delta2);
 
-    double xL_minus = -B/(4.0*A) - 0.5 * sqrt((B*B)/(4.0*A*A) - (2*C)/(3*A) + delta);
-    double xL_plus = -B/(4.0*A) + 0.5 * sqrt((B*B)/(4.0*A*A) - (2*C)/(3*A) + delta);
+    // 计算 deltaL 和 deltaR（使用安全除法）
+    std::complex<double> denom_pow = std::pow(delta2 + sqrt_term, 1.0/3.0);
+    std::complex<double> deltaL = safe_divide(std::pow(2.0, 1.0/3.0) * delta1, 3.0*A * denom_pow);
+    std::complex<double> deltaR = safe_divide(denom_pow, 3.0 * std::pow(2.0, 1.0/3.0) * A);
+    std::complex<double> delta = deltaL + deltaR;
 
-    double xR_minus = 0.5 * sqrt(
-            (B*B)/(2*A*A) -
-            (4*C)/(3*A) -
-            delta -
-            (
-                    (-(B*B*B)/(A*A*A) + (4.0*B*C)/(A*A) - (8.0*D)/A) /
-                    (4 * sqrt((B*B)/(4*A*A) - (2*C)/(3*A) + delta))
-            )
-    );
-    double xR_plus = 0.5 * sqrt(
-            (B*B)/(2*A*A) -
-            (4*C)/(3*A) -
-            delta +
-            (
-                    (-(B*B*B)/(A*A*A) + (4.0*B*C)/(A*A) - (8.0*D)/A) /
-                    (4 * sqrt((B*B)/(4*A*A) - (2*C)/(3*A) + delta))
-            )
-    );
-    double x1 = xL_minus - xR_minus;
-    double x2 = xL_minus + xR_minus;
-    double x3 = xL_plus - xR_plus;
-    double x4 = xL_plus + xR_plus;
+    // 计算 xL/xR（自动处理复数平方根）
+    std::complex<double> term_B2_4A2 = (B*B)/(4.0*A*A);
+    std::complex<double> sqrt_arg_L = term_B2_4A2 - (2.0*C)/(3.0*A) + delta;
+    std::complex<double> sqrt_L = std::sqrt(sqrt_arg_L);
+    std::complex<double> xL_minus = -B/(4.0*A) - 0.5 * sqrt_L;
+    std::complex<double> xL_plus  = -B/(4.0*A) + 0.5 * sqrt_L;
+
+    // 计算 xR_minus/xR_plus（处理分母安全）
+    std::complex<double> numerator = -(B*B*B)/(A*A*A) + (4.0*B*C)/(A*A) - (8.0*D)/A;
+    std::complex<double> denom_xR = 4.0 * sqrt_L;
+    std::complex<double> term_inside = safe_divide(numerator, denom_xR);
+
+    std::complex<double> sqrt_arg_R1 = (B*B)/(2.0*A*A) - (4.0*C)/(3.0*A) - delta - term_inside;
+    std::complex<double> sqrt_arg_R2 = (B*B)/(2.0*A*A) - (4.0*C)/(3.0*A) - delta + term_inside;
+    std::complex<double> xR_minus = 0.5 * std::sqrt(sqrt_arg_R1);
+    std::complex<double> xR_plus  = 0.5 * std::sqrt(sqrt_arg_R2);
+
+    // 计算最终解并提取实部
+    const double imag_threshold = 1e-6;
+    auto get_real = [imag_threshold](std::complex<double> x) -> double {
+        return (std::abs(x.imag()) < imag_threshold) ? x.real() : NAN;
+    };
+
+    double x1 = get_real(xL_minus - xR_minus);
+    double x2 = get_real(xL_minus + xR_minus);
+    double x3 = get_real(xL_plus  - xR_plus);
+    double x4 = get_real(xL_plus  + xR_plus);
+
     return vec4{x1, x2, x3, x4};
 }
