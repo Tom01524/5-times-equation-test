@@ -44,16 +44,7 @@ struct coefficient6 {
             default: throw std::invalid_argument("index out of range");
         }
     }
-    coefficient6 transform2Back1(){
-        coefficient6 res;
-        res.a = a/f;
-        res.b = b/f;
-        res.c = c/f;
-        res.d = d/f;
-        res.e = e/f;
-        res.f = 1.0;
-        return res;
-    }
+
 
 };
 struct vec4 {
@@ -104,21 +95,20 @@ static vec4 solveEquation_4(coefficient5 src);
  * root: -5.2246874213288308
  * root: -0.3598134920840291
  */
-
+static double checkRoot(coefficient6 src, double x);
 
 int main() {
     class std::random_device rd;  // 获取一个随机数，作为种子
     std::mt19937 gen(rd()); // 使用Mersenne Twister算法生成随机数
     // 定义一个均匀分布的范围
-    class std::uniform_int_distribution<> distr(1, 35);
+    class std::uniform_real_distribution<> distr(-4.0, 4.0);
 
     coefficient6 input3{};
     for (int i = 0; i < 6; i++) {
-        double _1 = static_cast<double>(distr(gen)) / 10.0;
-        double _2 = static_cast<double>(distr(gen)) / 10.0;
-        double randnow = pow(_1, _2) / pow(_2, _1) + pow(_1, _2);
+        double randnow = static_cast<double>(distr(gen));
+
         input3[i] = randnow;
-//        printf("rannow: %.9f\n", randnow);
+        printf("rannow: %.9f\n", randnow);
     }
 //    input3[0] = 1.0;
 //    input3[1] = 0.0;
@@ -134,8 +124,15 @@ int main() {
            input3[5] > 0.0 ? '+' : '-', abs(input3[5]));
     // 1.0,0.0,10.0,0.0,20.0,-4.0
     vector<double> roots = solve_quintic(input3[0], input3[1], input3[2], input3[3], input3[4], input3[5]);
+    puts("");
     for (double root : roots) {
-        printf("root: x=%.16f, y=0\n", root);
+        printf("root: x=%.16f, ", root);
+        double y_ = checkRoot(input3,root);
+        if(y_ < 1e-10){
+            printf("y=%.16f √\n",y_);
+        }else{
+            printf("y=%.16f ×\n",y_);
+        }
     }
     return 0;
 }
@@ -171,6 +168,7 @@ vector<double> solve_quintic(double a, double b, double c, double d, double e, d
 
     // 2. 收集实数临界点并排序 order acme
     vector<double> acme;int nanCount = 0;
+    puts("");
     for (int i = 0; i < 4; ++i) {
         if (!isnan(crits[i])){  // 简单过滤无效解
             cout << "凸点[" << i << "] x: " << crits[i];
@@ -294,4 +292,8 @@ vec4 solveEquation_4(coefficient5 src){
     double x4 = get_real(xL_plus  + xR_plus);
 
     return vec4{x1, x2, x3, x4};
+}
+static double checkRoot(coefficient6 src, double x){
+    double y = src.a*pow(x,5) + src.b*pow(x,4) + src.c*pow(x,3) + src.d*pow(x,2) + src.e*x + src.f;
+    return y;
 }
