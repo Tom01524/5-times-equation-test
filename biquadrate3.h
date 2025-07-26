@@ -1,87 +1,23 @@
 //
 // Created by iceoc0 on 2025/7/22.
 //
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cmath>
-#include <limits>
-#include <random>
-#include <cassert>
-#include <complex>
+#ifndef INC_5_TIMES_EQUATION_BIQUADRATE3_H
+#define INC_5_TIMES_EQUATION_BIQUADRATE3_H
 
+#include "./typesNeed.h"
 using namespace std;
 
 const double INF = numeric_limits<double>::infinity();
 const double accuracy = 1e-12;
 
-struct coefficient5 { double a, b, c, d, e; };
-struct coefficient6 {
-    double a, b, c, d, e, f;
-    double operator[](int index) const {
-        switch (index) {
-            case 0:return a;
-            case 1:return b;
-            case 2:return c;
-            case 3:return d;
-            case 4:return e;
-            case 5:return f;
 
-            default:
-                throw std::invalid_argument("index out of range");
-        }
-    }
-    // 写入版本 (返回引用)
-    double& operator[](int index) {
-        switch (index) {
-            case 0:return a;
-            case 1:return b;
-            case 2:return c;
-            case 3:return d;
-            case 4:return e;
-            case 5:return f;
-
-            default: throw std::invalid_argument("index out of range");
-        }
-    }
-
-
-};
-struct vec4 {
-    double x1, x2; // 两个解
-    double x3, x4; // 两个解
-    double operator[](int index) const {
-        switch (index) {
-            case 0:
-                return x1;
-            case 1:
-                return x2;
-            case 2:
-                return x3;
-            case 3:
-                return x4;
-            default:
-                throw std::invalid_argument("index out of range");
-        }
-    }
-    // 写入版本 (返回引用)
-    double& operator[](int index) {
-        switch (index) {
-            case 0: return x1;
-            case 1: return x2;
-            case 2: return x3;
-            case 3: return x4;
-            default: throw std::invalid_argument("index out of range");
-        }
-    }
-
-};
 template<typename Func>
-static double bisection(Func&& func_, double a, double b, double accurate = 1e-12, int max_iter = 1000);
-static vector<double> solve_quintic(double a, double b, double c, double d, double e, double f_coeff);
+double bisection(Func&& func_, double a, double b, double accurate = 1e-12, uint32_t max_iter = 0xffffffff);
+vector<double> solve_quintic(double a, double b, double c, double d, double e, double f_coeff);
 // 示例四次方程求解函数（需确保能返回实数解）
-static vec4 solveEquation_4(coefficient5 src);
-
+#ifdef MAYBE_UNUSED
+vec4 solveEquation_4(coefficient5 src);
+#endif
 /*
  * rannow: 0.086743871
  * rannow: 4.169851147
@@ -95,50 +31,12 @@ static vec4 solveEquation_4(coefficient5 src);
  * root: -5.2246874213288308
  * root: -0.3598134920840291
  */
-static double checkRoot(coefficient6 src, double x);
+double checkRoot(coefficient6 src, double x);
 
-int main() {
-    class std::random_device rd;  // 获取一个随机数，作为种子
-    std::mt19937 gen(rd()); // 使用Mersenne Twister算法生成随机数
-    // 定义一个均匀分布的范围
-    class std::uniform_real_distribution<> distr(-4.0, 4.0);
 
-    coefficient6 input3{};
-    for (int i = 0; i < 6; i++) {
-        double randnow = static_cast<double>(distr(gen));
-
-        input3[i] = randnow;
-        printf("rannow: %.9f\n", randnow);
-    }
-//    input3[0] = 1.0;
-//    input3[1] = 0.0;
-//    input3[2] = -10.0;
-//    input3[3] = 0.0;
-//    input3[4] = 20.0;
-//    input3[5] = 0.0;
-    printf("%.9fx⁵ %c %.9fx⁴ %c %.9fx³ %c %.9fx² %c %.9fx %c %.9f = 0\n",
-           input3[0],input3[1] > 0.0 ? '+' : '-', abs(input3[1]),
-           input3[2] > 0.0 ? '+' : '-', abs(input3[2]),
-           input3[3] > 0.0 ? '+' : '-', abs(input3[3]),
-           input3[4] > 0.0 ? '+' : '-', abs(input3[4]),
-           input3[5] > 0.0 ? '+' : '-', abs(input3[5]));
-    // 1.0,0.0,10.0,0.0,20.0,-4.0
-    vector<double> roots = solve_quintic(input3[0], input3[1], input3[2], input3[3], input3[4], input3[5]);
-    puts("");
-    for (double root : roots) {
-        printf("root: x=%.16f, ", root);
-        double y_ = checkRoot(input3,root);
-        if(y_ < 1e-10){
-            printf("y=%.16f √\n",y_);
-        }else{
-            printf("y=%.16f ×\n",y_);
-        }
-    }
-    return 0;
-}
 // 二分法求根函数
 template<typename funcPtr>
-double bisection(funcPtr&& func_, double a, double b, double accurate, int max_iter) {
+double bisection(funcPtr&& func_, double a, double b, double accurate, uint32_t max_iter) {
     double fa = func_(a);
     double fb = func_(b);
 
@@ -231,15 +129,16 @@ vector<double> solve_quintic(double a, double b, double c, double d, double e, d
     // 6. 去重排序 remove duplicates and sort
     sort(roots.begin(), roots.end());
     auto last = unique(roots.begin(), roots.end(),
-                       [](double a, double b) { return abs(a - b) < 1e-6; });
+                       [](double a, double b) { return abs(a - b) < 1e-10; });
     roots.erase(last, roots.end());
 
     // 最多返回5个实根
-    if (roots.size() > 5)
-        roots.resize(5);
+//    if (roots.size() > 5)
+//        roots.resize(5);
 
     return roots;
 }
+#ifdef MAYBE_UNUSED
 vec4 solveEquation_4(coefficient5 src){
     using namespace std::complex_literals;
     std::complex<double> A = src.a, B = src.b, C = src.c, D = src.d, E = src.e;
@@ -293,7 +192,9 @@ vec4 solveEquation_4(coefficient5 src){
 
     return vec4{x1, x2, x3, x4};
 }
-static double checkRoot(coefficient6 src, double x){
+#endif
+double checkRoot(coefficient6 src, double x){
     double y = src.a*pow(x,5) + src.b*pow(x,4) + src.c*pow(x,3) + src.d*pow(x,2) + src.e*x + src.f;
     return y;
 }
+#endif //INC_5_TIMES_EQUATION_BIQUADRATE3_H
