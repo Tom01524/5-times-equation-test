@@ -273,7 +273,7 @@ vec4 solveEquation_4(coefficient5 src){
     vec4_ res = solveEquation_4_(coefficient5_{A, B, C, D, E});
     vec4 res2;
     for(int i=0;i<4;i++){
-        if(res[i].imag()<1e-6){
+        if(abs(res[i].imag())<1e-15){
             res2[i] = res[i].real();
         }else{
             res2[i] = NAN;
